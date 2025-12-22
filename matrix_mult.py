@@ -7,8 +7,8 @@ def matrix_multiplication(
     if A.ndim != 2 or B.ndim != 2:
         raise ValueError("Either A.ndim or B.ndim != 2")
 
-    if A.shape[0] != B.shape[1]:
-        raise ValueError("A.shape[0] != B.shape[1]")
+    if A.shape[1] != B.shape[0]:
+        raise ValueError("A.shape[1] != B.shape[0]")
 
     out = torch.zeros(A.shape[0], B.shape[1])
     for i, row in enumerate(A):
