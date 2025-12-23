@@ -13,7 +13,7 @@ torch.set_default_device(device)
 torch.manual_seed(0)
 torch.mps.manual_seed(0)
 
-DIRECTORY = "Workflow/models/pytorch_workflow_model"
+DIRECTORY = "models/pytorch_workflow_model"
 if not os.path.exists(DIRECTORY):
     os.mkdir(DIRECTORY)
 
