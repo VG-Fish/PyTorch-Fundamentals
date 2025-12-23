@@ -133,6 +133,10 @@ plt.xlabel("Epochs")
 plt.legend()
 plt.savefig(f"{DIRECTORY}/loss.png")
 
+# Model visualization
+plot_predictions(
+    X_train.cpu(), y_train.cpu(), X_test.cpu(), y_test.cpu(), test_predictions.cpu()
+)
 # Saving the model
 print(model.state_dict())
 MODEL_PATH = Path(DIRECTORY)
@@ -146,8 +150,4 @@ print(f"Saving model to: {MODEL_SAVE_PATH}")
 # Loading the saved model
 loaded_model = LinearRegressionModel()
 loaded_model.load_state_dict(torch.load(MODEL_SAVE_PATH))
-
-# Model visualization
-plot_predictions(
-    X_train.cpu(), y_train.cpu(), X_test.cpu(), y_test.cpu(), test_predictions.cpu()
-)
+print(loaded_model.state_dict())
