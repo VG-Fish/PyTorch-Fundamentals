@@ -124,6 +124,7 @@ for epoch in range(epochs):
 
         print(f"Epoch: {epoch} | Loss: {loss} | Test loss: {test_loss}")
 
+# Plotting loss
 plt.plot(epoch_count, train_loss_values, label="Training Loss")
 plt.plot(epoch_count, test_loss_values, label="Testing Loss")
 plt.title("Training and Test Loss Curves")
@@ -132,6 +133,7 @@ plt.xlabel("Epochs")
 plt.legend()
 plt.savefig(f"{DIRECTORY}/loss.png")
 
+# Saving the model
 print(model.state_dict())
 MODEL_PATH = Path(DIRECTORY)
 MODEL_PATH.mkdir(parents=True, exist_ok=True)
@@ -140,6 +142,10 @@ MODEL_SAVE_PATH = MODEL_PATH / MODEL_NAME
 torch.save(obj=model.state_dict(), f=MODEL_SAVE_PATH)
 
 print(f"Saving model to: {MODEL_SAVE_PATH}")
+
+# Loading the saved model
+loaded_model = LinearRegressionModel()
+loaded_model.load_state_dict(torch.load(MODEL_SAVE_PATH))
 
 # Model visualization
 plot_predictions(
