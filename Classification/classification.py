@@ -7,7 +7,7 @@ import torch.nn as nn
 from sklearn.datasets import make_moons
 from sklearn.model_selection import train_test_split
 
-from Helpers.helpers import plot_decision_boundary, plot_predictions
+from Helpers.helpers import plot_decision_boundary
 
 # Set up
 torch.set_default_device("mps")
