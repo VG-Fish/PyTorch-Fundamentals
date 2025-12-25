@@ -1,3 +1,4 @@
+import json
 import os
 
 import matplotlib as mpl
@@ -5,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.nn as nn
+from sklearn.metrics import classification_report
 from torchmetrics.classification import Accuracy
 
 from Helpers.helpers import plot_decision_boundary
@@ -97,6 +99,19 @@ for epoch in range(epochs):
 
     print(f"""Epoch: {epoch + 1} | Train Loss: {round(loss.item(), 4)} | Test Loss: {round(test_loss.item(), 4)}
              Train Accuracy: {round(accuracy.item(), 4)} | Test Accuracy: {round(test_accuracy.item(), 4)}""")
+
+model.eval()
+with torch.inference_mode():
+    y_logits = model(X_train)
+    report = classification_report(
+        y_train.unsqueeze(dim=1).cpu(),
+        y_logits.argmax(dim=1).cpu(),
+        output_dict=True,
+        # Suppresses all warnings
+        zero_division=0.0,  # pyright: ignore[reportArgumentType]
+    )
+    with open(f"{SAVE_DIRECTORY}/classification_report.json", "w") as f:
+        report = json.dump(report, f, indent=2)
 
 # Clear figure
 plt.clf()

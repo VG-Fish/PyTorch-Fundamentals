@@ -49,7 +49,7 @@ def plot_decision_boundary(
     Source - https://madewithml.com/courses/foundations/neural-networks/ (with modifications)
     """
     # Put everything to CPU (works better with NumPy + Matplotlib)
-    model.to("cpu")
+    model_ = model.to("cpu")
     X, y = X.to("cpu"), y.to("cpu")
 
     # Setup prediction boundaries and grid
@@ -61,9 +61,9 @@ def plot_decision_boundary(
     X_to_pred_on = torch.from_numpy(np.column_stack((xx.ravel(), yy.ravel()))).float()
 
     # Make predictions
-    model.eval()
+    model_.eval()
     with torch.inference_mode():
-        y_logits = model(X_to_pred_on)
+        y_logits = model_(X_to_pred_on)
 
     # Test for multi-class or binary and adjust logits to prediction labels
     if len(torch.unique(y)) > 2:
