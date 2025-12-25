@@ -56,9 +56,9 @@ X_train, X_test, y_train, y_test = (
 
 model = nn.Sequential(
     nn.Linear(2, 50),
-    # nn.ReLU(),
+    nn.ReLU(),
     nn.Linear(50, 50),
-    # nn.ReLU(),
+    nn.ReLU(),
     nn.Linear(50, NUM_ClASSES),
 )
 loss_function = nn.CrossEntropyLoss()
