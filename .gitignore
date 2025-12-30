@@ -1,4 +1,5 @@
 /.venv
 __pycache__/
 .env
-Computer Vision/data/
+Computer Vision/*/fer2013/
+Computer Vision/*/fer2013_images/

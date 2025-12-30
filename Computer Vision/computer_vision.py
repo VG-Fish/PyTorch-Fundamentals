@@ -5,12 +5,20 @@ from torchmetrics.classification import Accuracy
 from torchmetrics.metric import Metric
 from torchvision import datasets
 
-device = "mps"
+device = "mps" if torch.mps.is_available() else "cpu"
 
 RANDOM_SEED = 0
 torch.manual_seed(RANDOM_SEED)
 g = torch.Generator().manual_seed(RANDOM_SEED)
-LABELS = ["Angry", "Disgust", "Fear", "Happy", "Neutral", "Sad", "Surprise"]
+LABELS = LABELS = [
+    "Angry",
+    "Disgust",
+    "Fear",
+    "Happy",
+    "Sad",
+    "Surprise",
+    "Neutral",
+]
 
 
 def eval_model(
@@ -93,6 +101,7 @@ def main():
         generator=g,
     )
 
+    # Only one channel as our input is in grayscale
     input_shape = 1
     output_shape = len(LABELS)
     hidden_units = 10
@@ -101,6 +110,7 @@ def main():
         # Block 1
         nn.Conv2d(
             input_shape,
+            # hidden_units = # of kernels to learn
             hidden_units,
             # kernel_size can also be a tuple
             3,
@@ -132,11 +142,12 @@ def main():
         # Classifier
         nn.Flatten(),
         # 48 -> 24 -> 12 after MaxPool2d
-        nn.Linear(hidden_units * 10 * 10, output_shape),
+        nn.Linear(hidden_units * 12 * 12, output_shape),
     ).to(device)
 
     loss_fn = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.1)
+    # lr is usually 1e-3 or 1e-4 for CNN image models
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     accuracy_fn = Accuracy(task="multiclass", num_classes=len(LABELS)).to(device)
 
     epochs = 10
