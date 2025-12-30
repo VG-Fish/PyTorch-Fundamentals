@@ -6,6 +6,7 @@ from torchmetrics.metric import Metric
 from torchvision import datasets
 
 device = "mps" if torch.mps.is_available() else "cpu"
+torch.set_float32_matmul_precision("high")
 
 RANDOM_SEED = 0
 torch.manual_seed(RANDOM_SEED)
@@ -27,21 +28,19 @@ def eval_model(
     loss_fn: nn.Module,
     accuracy_fn: Metric,
 ):
-    loss: torch.Tensor = torch.tensor(0.0).to(device)
+    total_loss: float = 0.0
     accuracy_fn.reset()
     model.eval()
     with torch.inference_mode():
         for X, y in loader:
-            X = X.to(device, non_blocking=True).float()
-            y = y.to(device, non_blocking=True)
+            X = X.to(device)
+            y = y.to(device)
 
             y_pred = model(X)
 
-            loss += loss_fn(y_pred, y)
+            total_loss += loss_fn(y_pred, y).item()
             accuracy_fn.update(y_pred, y)
-
-        loss /= len(loader)
-    return loss.item(), accuracy_fn.compute().item()
+    return total_loss / len(loader), accuracy_fn.compute().item()
 
 
 def train_step(
@@ -53,8 +52,8 @@ def train_step(
     train_loss = 0.0
     model.train()
     for batch, (X, y) in enumerate(loader):
-        X = X.to(device, non_blocking=True).float()
-        y = y.to(device, non_blocking=True)
+        X = X.to(device)
+        y = y.to(device)
 
         y_pred = model(X)
 
@@ -71,8 +70,8 @@ def train_step(
 def main():
     transform = T.Compose(
         [
-            T.PILToTensor(),
             T.Grayscale(num_output_channels=1),
+            T.ToTensor(),
         ]
     )
 
@@ -85,19 +84,19 @@ def main():
         transform=transform,
     )
 
-    BATCH_SIZE = 64
+    BATCH_SIZE = 256
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
         batch_size=BATCH_SIZE,
         shuffle=True,
-        num_workers=4,
+        num_workers=8,
         generator=g,
     )
     test_loader = torch.utils.data.DataLoader(
         test_dataset,
         batch_size=BATCH_SIZE,
         shuffle=False,
-        num_workers=4,
+        num_workers=8,
         generator=g,
     )
 
@@ -147,7 +146,7 @@ def main():
 
     loss_fn = nn.CrossEntropyLoss()
     # lr is usually 1e-3 or 1e-4 for CNN image models
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     accuracy_fn = Accuracy(task="multiclass", num_classes=len(LABELS)).to(device)
 
     epochs = 10
