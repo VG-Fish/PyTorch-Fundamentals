@@ -93,18 +93,53 @@ def main():
         generator=g,
     )
 
+    input_shape = 1
+    output_shape = len(LABELS)
+    hidden_units = 10
+    # TinyVGG CNN Architecture
     model = nn.Sequential(
-        nn.Flatten(),
-        nn.Linear(48 * 48, 100),
+        # Block 1
+        nn.Conv2d(
+            input_shape,
+            hidden_units,
+            # kernel_size can also be a tuple
+            3,
+            stride=1,
+            # padding = kernel_size // 2 for odd numbered kernel sizes
+            # This choice keeps input and output sizes equal
+            padding=1,
+        ),
         nn.ReLU(),
-        nn.Linear(100, 7),
+        nn.Conv2d(
+            hidden_units,
+            hidden_units,
+            kernel_size=3,
+            stride=1,
+            padding=1,
+        ),
+        nn.ReLU(),
+        nn.MaxPool2d(
+            kernel_size=2,
+            # Usually stride = kernel_size so we can omit stride
+            stride=2,
+        ),
+        # Block 2
+        nn.Conv2d(hidden_units, hidden_units, 3, padding=1),
+        nn.ReLU(),
+        nn.Conv2d(hidden_units, hidden_units, 3, padding=1),
+        nn.ReLU(),
+        nn.MaxPool2d(2),
+        # Classifier
+        nn.Flatten(),
+        # 48 -> 24 -> 12 after MaxPool2d
+        nn.Linear(hidden_units * 10 * 10, output_shape),
     ).to(device)
 
     loss_fn = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.1)
     accuracy_fn = Accuracy(task="multiclass", num_classes=len(LABELS)).to(device)
 
-    epochs = 3
+    epochs = 10
     for epoch in range(epochs):
         train_loss = train_step(model, train_loader, loss_fn, optimizer)
         print(f"Epoch: {epoch} | Train loss: {train_loss:.3f}\n")
