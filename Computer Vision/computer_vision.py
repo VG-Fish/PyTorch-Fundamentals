@@ -83,6 +83,9 @@ def main():
         [
             T.Grayscale(num_output_channels=1),
             T.ToTensor(),
+            T.RandomHorizontalFlip(),
+            T.ColorJitter(),
+            T.Normalize(mean=0.5, std=0.5),
         ]
     )
 
@@ -95,7 +98,7 @@ def main():
         transform=transform,
     )
 
-    BATCH_SIZE = 4096
+    BATCH_SIZE = 128
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
         batch_size=BATCH_SIZE,
@@ -114,7 +117,7 @@ def main():
     # Only one channel as our input is in grayscale
     input_shape = 1
     output_shape = len(LABELS)
-    hidden_units = 32
+    hidden_units = 128
     # TinyVGG CNN Architecture
     model = nn.Sequential(
         # Block 1
@@ -129,6 +132,8 @@ def main():
             # This choice keeps input and output sizes equal
             padding="same",
         ),
+        nn.ReLU(),
+        nn.Conv2d(hidden_units, hidden_units, 3, padding="same"),
         # This layers normalizes the distribution
         nn.BatchNorm2d(num_features=hidden_units),
         nn.ReLU(),
@@ -139,36 +144,65 @@ def main():
         ),
         # Block 2
         nn.Conv2d(hidden_units, hidden_units, 3, padding="same"),
+        nn.ReLU(),
+        nn.Conv2d(hidden_units, hidden_units, 3, padding="same"),
         nn.BatchNorm2d(num_features=hidden_units),
         nn.ReLU(),
         nn.MaxPool2d(2),
         # Block 3
         nn.Conv2d(hidden_units, hidden_units, 3, padding="same"),
+        nn.ReLU(),
+        nn.Conv2d(hidden_units, hidden_units, 3, padding="same"),
         nn.BatchNorm2d(num_features=hidden_units),
         nn.ReLU(),
+        nn.MaxPool2d(2),
         # Block 4
+        nn.Conv2d(hidden_units, hidden_units, 3, padding="same"),
+        nn.ReLU(),
+        nn.Conv2d(hidden_units, hidden_units, 3, padding="same"),
+        nn.BatchNorm2d(num_features=hidden_units),
+        nn.ReLU(),
+        nn.AvgPool2d(2),
+        # Block 5
+        nn.Conv2d(hidden_units, hidden_units, 3, padding="same"),
+        nn.ReLU(),
         nn.Conv2d(hidden_units, hidden_units, 3, padding="same"),
         nn.BatchNorm2d(num_features=hidden_units),
         nn.ReLU(),
         # Classifier
         nn.Flatten(),
         # Randomly zeros out some neurons to prevent overfittig
-        nn.Dropout(p=0.5),
+        nn.Dropout(p=0.25),
         # In X ** 2, X = 48 * 2^(-num_max_pool_2d)
-        nn.Linear(hidden_units * 12**2, output_shape),
+        nn.Linear(hidden_units * 3**2, hidden_units),
+        nn.Linear(hidden_units, output_shape),
     ).to(device)
-    print(model.state_dict())
+    print(model)
 
     loss_fn = nn.CrossEntropyLoss()
     # lr is usually 1e-3 or 1e-4 for CNN image models
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
-    f1_score_fn = F1Score(task="multiclass", num_classes=len(LABELS)).to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=3e-4)
+    f1_score_fn = F1Score(
+        task="multiclass", num_classes=len(LABELS), average="weighted"
+    ).to(device)
     accuracy_fn = Accuracy(task="multiclass", num_classes=len(LABELS)).to(device)
 
-    epochs = 1
+    epochs = 100
     for epoch in tqdm(range(epochs)):
         train_loss = train_step(model, train_loader, loss_fn, optimizer)
         print(f"Epoch: {epoch} | Train loss: {train_loss:.3f}\n")
+
+        print("Getting loss and metrics...")
+        loss, metrics = eval_model(
+            model,
+            test_loader,
+            loss_fn,
+            {"F1Score": f1_score_fn, "Accuracy": accuracy_fn},
+        )
+        print(f"Loss: {loss:.03f}", end="  ")
+        for name, metric in metrics.items():
+            print(f"{name}: {metric * 100:.03f}%", end="  ")
+        print()
 
     print("Getting test loss and metrics...")
     loss, metrics = eval_model(
