@@ -1,9 +1,11 @@
+import mlxtend
 import torch
 import torch.nn as nn
 import torchvision.transforms as T
-from torchmetrics.classification import Accuracy
+from torchmetrics.classification import F1Score
 from torchmetrics.metric import Metric
 from torchvision import datasets
+from tqdm.auto import tqdm
 
 device = "mps" if torch.mps.is_available() else "cpu"
 torch.set_float32_matmul_precision("high")
@@ -26,10 +28,10 @@ def eval_model(
     model: nn.Module,
     loader: torch.utils.data.DataLoader,
     loss_fn: nn.Module,
-    accuracy_fn: Metric,
+    metric_fn: Metric,
 ):
     total_loss: float = 0.0
-    accuracy_fn.reset()
+    metric_fn.reset()
     model.eval()
     with torch.inference_mode():
         for X, y in loader:
@@ -39,8 +41,8 @@ def eval_model(
             y_pred = model(X)
 
             total_loss += loss_fn(y_pred, y).item()
-            accuracy_fn.update(y_pred, y)
-    return total_loss / len(loader), accuracy_fn.compute().item()
+            metric_fn.update(y_pred, y)
+    return total_loss / len(loader), metric_fn.compute().item()
 
 
 def train_step(
@@ -84,26 +86,26 @@ def main():
         transform=transform,
     )
 
-    BATCH_SIZE = 256
+    BATCH_SIZE = 4096
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
         batch_size=BATCH_SIZE,
         shuffle=True,
-        num_workers=8,
+        num_workers=0,
         generator=g,
     )
     test_loader = torch.utils.data.DataLoader(
         test_dataset,
         batch_size=BATCH_SIZE,
         shuffle=False,
-        num_workers=8,
+        num_workers=0,
         generator=g,
     )
 
     # Only one channel as our input is in grayscale
     input_shape = 1
     output_shape = len(LABELS)
-    hidden_units = 10
+    hidden_units = 32
     # TinyVGG CNN Architecture
     model = nn.Sequential(
         # Block 1
@@ -138,25 +140,31 @@ def main():
         nn.Conv2d(hidden_units, hidden_units, 3, padding=1),
         nn.ReLU(),
         nn.MaxPool2d(2),
+        # Block 3
+        nn.Conv2d(hidden_units, hidden_units, 3, padding=1),
+        nn.ReLU(),
+        nn.Conv2d(hidden_units, hidden_units, 3, padding=1),
+        nn.ReLU(),
+        nn.MaxPool2d(2),
         # Classifier
         nn.Flatten(),
-        # 48 -> 24 -> 12 after MaxPool2d
-        nn.Linear(hidden_units * 12 * 12, output_shape),
+        # 48 -> 24 -> 12 -> 6 after MaxPool2d
+        nn.Linear(hidden_units * 6**2, output_shape),
     ).to(device)
 
     loss_fn = nn.CrossEntropyLoss()
     # lr is usually 1e-3 or 1e-4 for CNN image models
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
-    accuracy_fn = Accuracy(task="multiclass", num_classes=len(LABELS)).to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    f1_score_fn = F1Score(task="multiclass", num_classes=len(LABELS)).to(device)
 
-    epochs = 10
-    for epoch in range(epochs):
+    epochs = 100
+    for epoch in tqdm(range(epochs)):
         train_loss = train_step(model, train_loader, loss_fn, optimizer)
         print(f"Epoch: {epoch} | Train loss: {train_loss:.3f}\n")
 
-    print("Getting test loss and accuracy...")
-    loss, accuracy = eval_model(model, test_loader, loss_fn, accuracy_fn)
-    print(f"Test Loss: {loss} | Test Accuracy: {accuracy}")
+    print("Getting test loss and F1Score...")
+    loss, f1_score = eval_model(model, test_loader, loss_fn, f1_score_fn)
+    print(f"Test Loss: {loss} | F1Score: {f1_score}")
 
 
 if __name__ == "__main__":
