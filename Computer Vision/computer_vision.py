@@ -157,6 +157,7 @@ def main():
         # In X ** 2, X = 48 * 2^(-num_max_pool_2d)
         nn.Linear(hidden_units * 12**2, output_shape),
     ).to(device)
+    print(model.state_dict())
 
     loss_fn = nn.CrossEntropyLoss()
     # lr is usually 1e-3 or 1e-4 for CNN image models
