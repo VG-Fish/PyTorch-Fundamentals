@@ -146,10 +146,16 @@ def main():
         nn.Conv2d(hidden_units, hidden_units, 3, padding=1),
         nn.ReLU(),
         nn.MaxPool2d(2),
+        # Block 4
+        nn.Conv2d(hidden_units, hidden_units, 3, padding=1),
+        nn.ReLU(),
+        nn.Conv2d(hidden_units, hidden_units, 3, padding=1),
+        nn.ReLU(),
+        nn.MaxPool2d(2),
         # Classifier
         nn.Flatten(),
-        # 48 -> 24 -> 12 -> 6 after MaxPool2d
-        nn.Linear(hidden_units * 6**2, output_shape),
+        # In X ** 2, X = 48 * 2^(-num_max_pool_2d)
+        nn.Linear(hidden_units * 3**2, output_shape),
     ).to(device)
 
     loss_fn = nn.CrossEntropyLoss()
